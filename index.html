@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>MJH Count</title>
+<style>
+  :root{
+    --blue:#2E75B6; --blued:#1c4e80; --lite:#DEEAF1; --line:#c9d4de;
+    --ok:#2e7d32; --okbg:#e7f3e8; --warn:#c62828; --recy:#b26a00; --recybg:#fff3e0;
+    --ink:#1a2530; --mut:#5a6570; --bg:#eef1f4;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       background:var(--bg);color:var(--ink);font-size:16px;line-height:1.35;}
+  .hidden{display:none !important;}
+  button{font-family:inherit;cursor:pointer;border:none;}
+  .safe{padding-top:env(safe-area-inset-top);}
+
+  /* ---- top bar (sticky) ---- */
+  .bar{position:sticky;top:0;z-index:20;background:var(--blue);color:#fff;
+       padding:calc(10px + env(safe-area-inset-top)) 12px 10px;display:flex;
+       align-items:center;gap:8px;box-shadow:0 2px 6px rgba(0,0,0,.15);}
+  .bar .ttl{font-weight:700;font-size:17px;flex:1;min-width:0;overflow:hidden;
+            text-overflow:ellipsis;white-space:nowrap;}
+  .bar button{background:rgba(255,255,255,.18);color:#fff;border-radius:9px;
+              padding:8px 12px;font-size:14px;font-weight:600;}
+  .bar button.cta{background:#fff;color:var(--blued);}
+  .bar .sub{font-size:12px;opacity:.9;font-weight:400;}
+
+  .wrap{max-width:640px;margin:0 auto;padding:14px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;
+        padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);}
+  h1{font-size:22px;margin:0 0 6px;} h2{font-size:16px;margin:0 0 8px;}
+  p.sub{color:var(--mut);font-size:14px;margin:0 0 10px;}
+  label{font-size:13px;color:var(--mut);display:block;margin:10px 0 4px;}
+  input,select{font-size:17px;padding:12px;border:1px solid var(--line);
+               border-radius:10px;width:100%;background:#fff;}
+  .primary{background:var(--blue);color:#fff;font-size:17px;font-weight:700;
+           padding:14px;border-radius:11px;width:100%;margin-top:8px;}
+  .ghost{background:var(--lite);color:var(--blued);font-weight:600;
+         padding:12px;border-radius:10px;width:100%;}
+
+  /* ---- location cards ---- */
+  .loc{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);
+       border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.05);}
+  .loc .nm{font-weight:700;font-size:17px;flex:1;}
+  .loc .st{font-size:13px;color:var(--mut);text-align:right;}
+  .loc .st.done{color:var(--ok);font-weight:700;}
+  .loc .st.recy{color:var(--recy);font-weight:700;}
+  .chev{color:var(--blue);font-size:20px;}
+
+  /* ---- count list ---- */
+  .cathdr{background:var(--blued);color:#fff;font-weight:700;font-size:14px;
+          padding:8px 14px;margin:14px 0 0;border-radius:8px 8px 0 0;
+          position:sticky;top:0;z-index:5;}
+  .item{background:#fff;border:1px solid var(--line);border-top:none;padding:11px 14px;
+        display:flex;align-items:flex-start;gap:10px;}
+  .item:nth-child(even){background:#f7fafd;}
+  .item .fsn{font-size:12px;color:var(--mut);flex:0 0 62px;font-variant-numeric:tabular-nums;}
+  .item .ds{flex:1;font-size:15px;}
+  .item .mk{font-size:13px;font-weight:700;flex:0 0 auto;}
+  .item.rec{background:var(--okbg);}
+  .item.rec .mk{color:var(--ok);}
+  .item.rcy{background:var(--recybg);}
+  .item.rcy .mk{color:var(--recy);}
+  .item.nc{background:#f3f1e9;} .item.nc .mk{color:#8a7a3c;font-weight:700;}
+  .item.ns{background:#eceef1;color:#8a94a0;} .item.ns .mk{color:#8a94a0;font-weight:700;}
+  .item.open{background:#fff;box-shadow:inset 0 0 0 2px var(--blue);border-radius:8px 8px 0 0;}
+  .closer{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:var(--lite);
+          color:var(--blued);font-size:16px;font-weight:700;display:flex;align-items:center;
+          justify-content:center;margin-left:2px;}
+
+  .panel{padding:12px 14px 14px;background:#fff;border:2px solid var(--blue);
+         border-top:none;border-radius:0 0 10px 10px;margin-bottom:2px;}
+  .prow{display:flex;align-items:center;gap:10px;margin:10px 0;}
+  .prow .k{flex:0 0 120px;font-size:13px;color:var(--mut);}
+  .prow .invuom{font-weight:800;font-size:18px;color:var(--blued);
+                background:var(--lite);border-radius:8px;padding:8px 14px;}
+  .pack{font-size:12px;color:var(--mut);margin:-2px 0 6px 130px;}
+  .btns{display:flex;gap:8px;margin-top:6px;}
+  .btns button{flex:1;padding:13px;border-radius:10px;font-size:15px;font-weight:700;}
+  .b-rec{background:var(--blue);color:#fff;}
+  .b-recy{background:var(--recybg);color:var(--recy);border:1px solid #f0c988 !important;}
+  .b-recy.on{background:var(--recy);color:#fff;}
+  .b-edit{background:var(--lite);color:var(--blued);}
+  .b-unrec{background:#fdecea;color:var(--warn);}
+  .b-note{background:#eef6ff;color:var(--blued);border:1px dashed var(--blue) !important;
+          width:100%;padding:12px;border-radius:10px;font-weight:700;font-size:15px;margin-top:8px;}
+  .b-nc{background:#f3f1e9;color:#8a7a3c;} .b-nc.on{background:#8a7a3c;color:#fff;}
+  .b-ns{background:#eceef1;color:#5a6570;} .b-ns.on{background:#5a6570;color:#fff;}
+  .banner{background:#fff8e6;border:1px solid #f0dca0;border-radius:10px;padding:12px 14px;
+          font-size:14px;color:#7a6a2c;margin-bottom:6px;}
+  .guide h3{font-size:16px;margin:16px 0 6px;color:var(--blued);}
+  .guide ul{margin:6px 0 0;padding-left:18px;} .guide li{margin:6px 0;font-size:15px;}
+  .tag{display:inline-block;font-weight:700;border-radius:6px;padding:1px 7px;font-size:13px;}
+  .tag.c{background:var(--okbg);color:var(--ok);} .tag.r{background:var(--recybg);color:var(--recy);}
+  .tag.n{background:#f3f1e9;color:#8a7a3c;} .tag.s{background:#eceef1;color:#5a6570;}
+  .noteSec textarea{width:100%;min-height:64px;font-size:15px;padding:10px;border:1px solid var(--line);
+          border-radius:10px;font-family:inherit;resize:vertical;margin-top:2px;}
+  .noteitem{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;}
+  .noteitem .nh{font-size:13px;color:var(--mut);margin-bottom:4px;}
+  .noteitem .nh b{color:var(--blued);}
+  .noteitem .nb{font-size:15px;white-space:pre-wrap;}
+  .lochdr{font-weight:700;color:var(--blued);margin:12px 0 8px;font-size:15px;}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+         background:#222;color:#fff;padding:12px 18px;border-radius:24px;font-size:14px;
+         z-index:50;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;}
+  .toast.show{opacity:.95;}
+
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:60;display:flex;
+         align-items:center;justify-content:center;padding:20px;}
+  .modal .box{background:#fff;border-radius:14px;padding:22px;max-width:420px;width:100%;}
+  .seg{display:flex;background:var(--lite);border-radius:10px;padding:3px;margin:12px 0;}
+  .seg button{flex:1;padding:9px;border-radius:8px;font-weight:700;font-size:14px;
+              background:transparent;color:var(--blued);}
+  .seg button.on{background:#fff;color:var(--blue);box-shadow:0 1px 2px rgba(0,0,0,.12);}
+  .empty{text-align:center;color:var(--mut);padding:40px 20px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" class="toast"></div>
+<div id="modalHost"></div>
+
+<script>
+/* ============ BAKED DATA (generator injects) ============ */
+const APP = {"appKey": "mjhevs", "title": "MJH EVS & Laundry Count", "shortTitle": "MJH EVS Count", "homeTitle": "EVS & Laundry Inventory", "counterHint": "e.g. Kevin", "month": "September 2026", "generated": "2026-09-30T07:49:32", "locations": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart", "Laundry / Linen"], "groups": [{"name": "EVS Supply", "locs": ["EVS Supply Room"]}, {"name": "Housekeeping Closets", "locs": ["Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet"]}, {"name": "Housekeeping Carts", "locs": ["100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"name": "Laundry", "locs": ["Laundry / Linen"]}], "items": [{"category": "Breakroom & Vending", "fsn": "FSN1300", "description": "Maxithins (1 BX = 1 napkin; 250 BX/CS)", "inv_uom": "BX", "ct_uom_options": ["BX", "CS"], "pack_note": "250 BX/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Breakroom & Vending", "fsn": "FSN1301", "description": "Tampax", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "500 EA/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Breakroom & Vending", "fsn": "FSN1302", "description": "Fork Heavyweight Black Wrapped", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "1000 EA/CS", "locs": ["EVS Supply Room"]}, {"category": "Breakroom & Vending", "fsn": "FSN1303", "description": "Knife Heavyweight Black Wrapped", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "1000 EA/CS", "locs": ["EVS Supply Room"]}, {"category": "Breakroom & Vending", "fsn": "FSN1304", "description": "Spoon Heavyweight Black Wrapped", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "1000 EA/CS", "locs": ["EVS Supply Room"]}, {"category": "Cleaning Chemicals", "fsn": "FSN1305", "description": "Stainless Steel Polish 20oz Aerosol", "inv_uom": "CN", "ct_uom_options": ["CN", "CS"], "pack_note": "12 CN/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Cleaning Chemicals", "fsn": "FSN1306", "description": "Glass Cleaner Gleme 20oz Aerosol", "inv_uom": "CN", "ct_uom_options": ["CN", "CS"], "pack_note": "12 CN/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Cleaning Chemicals", "fsn": "FSN1307", "description": "Cleanser SparCreme 32oz RTU", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "12 EA/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Cleaning Chemicals", "fsn": "FSN1308", "description": "Hospital Disinfectant HDQ 256 2L Conc", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "4 EA/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet"]}, {"category": "Cleaning Chemicals", "fsn": "FSN1309", "description": "All Purpose Cleaner SD-20 20oz Aerosol", "inv_uom": "CN", "ct_uom_options": ["CN", "CS"], "pack_note": "12 CN/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Cleaning Chemicals", "fsn": "FSN1310", "description": "All Purpose Cleaner Xcelente #24 2L", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "4 EA/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet"]}, {"category": "Cleaning Chemicals", "fsn": "FSN1311", "description": "Bathroom Cleaner NABC #1 2L Conc", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "4 EA/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet"]}, {"category": "Cleaning Chemicals", "fsn": "FSN1312", "description": "All Purpose Cleaner Clean By Peroxy #15 2L", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "4 EA/CS", "locs": ["EVS Supply Room"]}, {"category": "Cleaning Chemicals", "fsn": "FSN1313", "description": "Furniture Polish Lime-O-Shine 1Qt RTU", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "12 EA/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Cleaning Chemicals", "fsn": "FSN1314", "description": "Carpet Cleaner Prespray HD 1Gal Conc", "inv_uom": "GA", "ct_uom_options": ["GA"], "pack_note": "", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet"]}, {"category": "Cleaning Chemicals", "fsn": "FSN1315", "description": "Carpet Cleaner Extraction Rinse 1Gal Conc", "inv_uom": "GA", "ct_uom_options": ["GA"], "pack_note": "", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet"]}, {"category": "Cleaning Chemicals", "fsn": "FSN1316", "description": "All Purpose Cleaner Xcelente Lavender 1Gal", "inv_uom": "GA", "ct_uom_options": ["GA", "CS"], "pack_note": "4 GA/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet"]}, {"category": "Cleaning Tools & Equipment", "fsn": "FSN1317", "description": "Microfiber Towel 12x12 Green (30 PK/CS)", "inv_uom": "PK", "ct_uom_options": ["PK", "CS", "EA"], "pack_note": "30 PK/CS; 12 EA/PK", "locs": ["EVS Supply Room"]}, {"category": "Cleaning Tools & Equipment", "fsn": "FSN1318", "description": "Microfiber Towel 12x12 Red (30 PK/CS)", "inv_uom": "PK", "ct_uom_options": ["PK", "CS", "EA"], "pack_note": "30 PK/CS; 12 EA/PK", "locs": ["EVS Supply Room"]}, {"category": "Cleaning Tools & Equipment", "fsn": "FSN1319", "description": "Spray Bottle Graduated 32oz", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["EVS Supply Room"]}, {"category": "Cleaning Tools & Equipment", "fsn": "FSN1320", "description": "Toilet Bowl Mop Caddy", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["EVS Supply Room"]}, {"category": "Cleaning Tools & Equipment", "fsn": "FSN1321", "description": "Mop Pad Microfiber Wet 18\" Blue", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["EVS Supply Room"]}, {"category": "Cleaning Tools & Equipment", "fsn": "FSN1322", "description": "Scour Pad Scotch-Brite 6\"x3.8\"", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "20 EA/CS", "locs": ["EVS Supply Room"]}, {"category": "Cleaning Tools & Equipment", "fsn": "FSN1323", "description": "Trigger Sprayer", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["EVS Supply Room"]}, {"category": "Cleaning Tools & Equipment", "fsn": "FSN1324", "description": "Toilet Bowl Mop 12\" White", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["EVS Supply Room"]}, {"category": "Cleaning Tools & Equipment", "fsn": "FSN1326", "description": "Vacuum Bags", "inv_uom": "EA", "ct_uom_options": ["EA", "PK"], "pack_note": "10 EA/PK", "locs": ["EVS Supply Room"]}, {"category": "Cleaning Tools & Equipment", "fsn": "FSN1732", "description": "Cleaning Pads, Mr Clean Magic Eraser", "inv_uom": "PD", "ct_uom_options": ["PD", "PK"], "pack_note": "6 PD/PK", "locs": ["EVS Supply Room"]}, {"category": "Hand Hygiene", "fsn": "FSN1327", "description": "Hand Sanitizer Purell Foam ES10 1200mL Citrus", "inv_uom": "EA", "ct_uom_options": ["EA", "CT"], "pack_note": "2 EA/CT", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Hand Hygiene", "fsn": "FSN1328", "description": "Hand Soap Purell FF Foam ES10 1200mL", "inv_uom": "EA", "ct_uom_options": ["EA", "CT"], "pack_note": "2 EA/CT", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Hand Hygiene", "fsn": "FSN1329", "description": "Hand Soap TC One Shot Lotion 800mL", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "4 EA/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Hand Hygiene", "fsn": "FSN1330", "description": "Hand Soap TC One Shot Lotion 1600mL", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "4 EA/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Office & Facility Supplies", "fsn": "FSN1331", "description": "Corrugated Box 24x18x18 4.5cu ft", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["EVS Supply Room"]}, {"category": "Office & Facility Supplies", "fsn": "FSN1332", "description": "Box Tape Clear 48mm x 55mm 3.0mil", "inv_uom": "RL", "ct_uom_options": ["RL", "PK"], "pack_note": "6 RL/PK", "locs": ["EVS Supply Room"]}, {"category": "Paper & Tissue Products", "fsn": "FSN1333", "description": "Toilet Tissue JRT- Large Rolls", "inv_uom": "RL", "ct_uom_options": ["RL", "CS"], "pack_note": "12 RL/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Paper & Tissue Products", "fsn": "FSN1334", "description": "Toilet Tissue - Reg Small Rolls", "inv_uom": "RL", "ct_uom_options": ["RL", "CS"], "pack_note": "96 RL/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Paper & Tissue Products", "fsn": "FSN1335", "description": "Paper Towel - White", "inv_uom": "PK", "ct_uom_options": ["PK", "CS"], "pack_note": "250 EA/PK; 16 PK/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Paper & Tissue Products", "fsn": "FSN1336", "description": "Paper Towel - Brown", "inv_uom": "PK", "ct_uom_options": ["PK", "CS"], "pack_note": "250 EA/PK; 16 PK/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Paper & Tissue Products", "fsn": "FSN1337", "description": "Paper Towel - 8\" Roll", "inv_uom": "RL", "ct_uom_options": ["RL", "CS"], "pack_note": "6 RL/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Paper & Tissue Products", "fsn": "FSN1338", "description": "MiniFold Breakroom Napkins", "inv_uom": "PK", "ct_uom_options": ["PK", "CS"], "pack_note": "12 PK/CS; 500 EA/PK", "locs": ["EVS Supply Room"]}, {"category": "Restroom & Dispensers", "fsn": "FSN1339", "description": "Urinal Screen Wave3 Mango", "inv_uom": "EA", "ct_uom_options": ["EA", "BX"], "pack_note": "10 EA/BX", "locs": ["EVS Supply Room"]}, {"category": "Restroom & Dispensers", "fsn": "FSN1340", "description": "Paper Towel Holder - Black", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["EVS Supply Room"]}, {"category": "Trash Liners & Bags", "fsn": "FSN1341", "description": "Trash Liner Roll 24x24 (20 RL/CS)", "inv_uom": "RL", "ct_uom_options": ["RL", "CS"], "pack_note": "50 BG/RL; 20 RL/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Trash Liners & Bags", "fsn": "FSN1342", "description": "Trash Liner Roll 30x37 (20 RL/CS)", "inv_uom": "RL", "ct_uom_options": ["RL", "CS"], "pack_note": "25 BG/RL; 20 RL/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Trash Liners & Bags", "fsn": "FSN1343", "description": "Trash Liner Roll 40x48 (10 RL/CS)", "inv_uom": "RL", "ct_uom_options": ["RL", "CS"], "pack_note": "25 BG/RL; 10 RL/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Trash Liners & Bags", "fsn": "FSN1344", "description": "Trash Liner Roll 40x46 - Yellow (100 EA/CS)", "inv_uom": "EA", "ct_uom_options": ["EA", "CS"], "pack_note": "100 EA/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Trash Liners & Bags", "fsn": "FSN1345", "description": "Trash Liner Roll 33x39 - Black (6 RL/CS)", "inv_uom": "RL", "ct_uom_options": ["RL", "CS"], "pack_note": "25 BG/RL; 6 RL/CS", "locs": ["EVS Supply Room", "Unit 100 HK Closet", "Unit 200 HK Closet", "Unit 300 HK Closet", "Unit 400 HK Closet", "Unit 500 HK Closet", "Back Hall HK Closet", "500 HK Closet 2", "2nd FL Admin HK Closet", "100 HK Cart", "200 HK Cart", "300 HK Cart", "400 HK Cart", "500 HK Cart", "Common HK Cart", "Common Up HK Cart", "Aux 1 HK Cart", "Aux 2 HK Cart", "Aux 3 HK Cart"]}, {"category": "Linen — Bedding", "fsn": "FSN1351", "description": "Sheet, Flat Import 66\" (12/DZ)", "inv_uom": "DZ", "ct_uom_options": ["DZ", "CS", "EA"], "pack_note": "Full DZ + loose EA", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bedding", "fsn": "FSN1352", "description": "Sheet Twin Fitted 36x80x9 T-180", "inv_uom": "DZ", "ct_uom_options": ["DZ", "EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bedding", "fsn": "FSN1349", "description": "Sheet, 84\" Fitted Sheet Knitted with Spandex 24 oz Gold Hm", "inv_uom": "DZ", "ct_uom_options": ["DZ", "EA"], "pack_note": "12 EA/DZ", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bedding", "fsn": "FSN1354", "description": "Blanket, Thermal 66x90", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bedding", "fsn": "FSN1357", "description": "Bedspread, Coverlet, Bubbles/Gold, 60x113, 21\" PIL", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bedding", "fsn": "FSN1358", "description": "Bedspread, Coverlet, Bubbles/Leaf, 60x113, 21\" PIL", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bedding", "fsn": "FSN1359", "description": "Bedspread, Coverlet, Swirling/Turquoise, 60x113, 21\" PIL", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bedding", "fsn": "FSN1356", "description": "Pillow, Disposable", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bedding", "fsn": "FSN1355", "description": "Pillow, Staph Check Blue", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bedding", "fsn": "FSN1350", "description": "Pillow Case, Microfiber 20x32, MicroTex", "inv_uom": "DZ", "ct_uom_options": ["DZ", "EA"], "pack_note": "12 EA/DZ", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bedding", "fsn": "FSN1353", "description": "Underpad Ibex, Bed Size 34x36 (Backup)", "inv_uom": "DZ", "ct_uom_options": ["DZ", "EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bedding", "fsn": "FSN1717", "description": "Underpad, Sofnit 300 - 34x36", "inv_uom": "DZ", "ct_uom_options": ["DZ", "CS", "EA"], "pack_note": "2 DZ/CS", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bathing", "fsn": "FSN1346", "description": "Towel, Blue Bath 100% Cotton 25\"x50\"", "inv_uom": "DZ", "ct_uom_options": ["DZ", "EA"], "pack_note": "12 EA/DZ", "locs": ["Laundry / Linen"]}, {"category": "Linen — Bathing", "fsn": "FSN1347", "description": "Face Towel, Blue 12x12 Hemmed", "inv_uom": "DZ", "ct_uom_options": ["DZ", "EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Fine Dining", "fsn": "FSN1360", "description": "Clothing Protector, Beige (Dignity Napkin)", "inv_uom": "DZ", "ct_uom_options": ["DZ", "CS", "EA"], "pack_note": "12 EA/DZ; 5 DZ/CS", "locs": ["Laundry / Linen"]}, {"category": "Linen — Fine Dining", "fsn": "FSN1361", "description": "Napkin, Custom 20\"x20\" 100% Spun Poly Tan", "inv_uom": "DZ", "ct_uom_options": ["DZ", "EA"], "pack_note": "Count DOZENS, not boxes", "locs": ["Laundry / Linen"]}, {"category": "Linen — Fine Dining", "fsn": "FSN1363", "description": "Tablecloth, Custom 36\"x36\" 100% Spun Poly Tan", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Fine Dining", "fsn": "FSN1362", "description": "Tablecloth, Custom 52\"x52\" 100% Spun Poly Periwinkle", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "Count EACH, not boxes", "locs": ["Laundry / Linen"]}, {"category": "Linen — Nursing / Rehab", "fsn": "FSN1364", "description": "Towel, Therapy, White w/Blue Stripe", "inv_uom": "DZ", "ct_uom_options": ["DZ", "EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Nursing / Rehab", "fsn": "FSN1365", "description": "Gown, Patient w/Overlap", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Nursing / Rehab", "fsn": "FSN1366", "description": "Underpad Ibex, Wheelchair Size 17x24", "inv_uom": "EA", "ct_uom_options": ["EA"], "pack_note": "", "locs": ["Laundry / Linen"]}, {"category": "Linen — Beauty Shop", "fsn": "FSN1348", "description": "Towel, Beauty Shop 16x27 White w/Blue Stripe", "inv_uom": "EA", "ct_uom_options": ["EA", "DZ"], "pack_note": "12 EA/DZ", "locs": ["Laundry / Linen"]}], "monthKey": "2026-09"};
+/* ======================================================== */
+
+/* appKey keeps each app's counts apart - every GitHub Pages app under one account shares an origin */
+const PFX  = (APP.appKey || 'mjhcount') + ':';
+const SKEY = PFX + APP.monthKey;
+if(APP.shortTitle) document.title = APP.shortTitle;
+let S = load();                    // state
+let view = { screen:'boot', loc:null, mode:'count', open:null };
+
+function load(){
+  try{ const r=localStorage.getItem(SKEY); if(r) return JSON.parse(r); }catch(e){}
+  return { month:APP.month, monthKey:APP.monthKey, counter:null, data:{}, complete:{} };
+}
+function save(){ try{ localStorage.setItem(SKEY, JSON.stringify(S)); }catch(e){ toast('⚠️ Storage blocked'); } }
+function rec(loc,fsn){ (S.data[loc]=S.data[loc]||{}); return S.data[loc][fsn]=S.data[loc][fsn]||{}; }
+function getr(loc,fsn){ return (S.data[loc]||{})[fsn]||null; }
+/* items stocked at this location (locs scoping; itemless = all locations) */
+function itemsFor(loc){ return APP.items.filter(it=> !it.locs || it.locs.indexOf(loc)>=0); }
+
+function counts(loc){
+  const d=S.data[loc]||{}; let recorded=0, recy=0, nc=0, nostock=0, notcounted=0;
+  for(const k in d){ const r=d[k];
+    if(r.recorded) recorded++; if(r.recycle) recy++; if(r.nc) nc++; if(r.nostock) nostock++; }
+  const items=itemsFor(loc);
+  items.forEach(it=>{ const r=d[it.fsn];
+    if(!(r&&(r.recorded||r.nc||r.nostock||r.recycle))) notcounted++; });
+  return {recorded, recy, nc, nostock, notcounted, total:items.length};
+}
+
+/* ---------- stale-month check ---------- */
+function otherMonthKeys(){
+  const out=[];
+  for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i);
+    if(k&&k.startsWith(PFX)&&k!==SKEY) out.push(k); }
+  return out;
+}
+
+/* ================= RENDER ================= */
+const el = document.getElementById('app');
+function h(html){ return html; }
+
+function render(){
+  if(view.screen==='boot')      return renderBoot();
+  if(view.screen==='home')      return renderHome();
+  if(view.screen==='location')  return renderLocation();
+  if(view.screen==='notes')     return renderNotes();
+  if(view.screen==='guide')     return renderGuide();
+}
+function openGuide(){ view.screen='guide'; render(); window.scrollTo(0,0); }
+function renderGuide(){
+  el.innerHTML=`
+   <div class="bar safe"><button onclick="goHome()">‹ Home</button>
+     <div class="ttl">How to count</div></div>
+   <div class="wrap"><div class="card guide">
+     <h3>1 · Pick a location, tap an item</h3>
+     <ul><li>Item opens. <b>INV UOM</b> (blue box) is fixed — that's how the item is stocked. Don't change it.</li></ul>
+     <h3>2 · Record a count</h3>
+     <ul><li>Type the <b>Amount counted</b>, pick the <b>CT-UOM</b> (the unit you actually counted in), tap <b>Record count</b>.</li>
+         <li>Shelf is empty? Enter <b>0</b> → Record. <span class="tag c">0</span> means "counted, none there."</li></ul>
+     <h3>3 · Can't find it / unsure?</h3>
+     <ul><li>Tap <span class="tag r">♺ Recycle</span> — it goes on the <b>Recycle</b> list to come back to. Recording it later clears it off.</li></ul>
+     <h3>4 · Not counted vs Not stocked</h3>
+     <ul><li><span class="tag n">Mark NC</span> — didn't/couldn't count it this time (one-time).</li>
+         <li><span class="tag s">Not stocked here</span> — this item isn't kept at this location at all. Flags it to drop from this location's list going forward.</li></ul>
+     <h3>5 · Notes</h3>
+     <ul><li><b>📝 Add note</b> — anything for improving inventory (par too high/low, wrong shelf). Shows on the Notes list.</li></ul>
+     <h3>6 · Finish the area</h3>
+     <ul><li>Tap <b>Complete</b>. It shows a breakdown and lets you <b>review not-counted</b> items so nothing stocked gets missed. Blanks export as <b>NC</b>.</li></ul>
+     <h3>7 · Send it back</h3>
+     <ul><li>Home → <b>Export</b> → <b>Copy count code</b> → text it to Mike (or <b>Download file</b> → email).</li></ul>
+   </div>
+   <button class="primary" onclick="goHome()">Got it</button></div>`;
+}
+function noteCount(){
+  let n=0; APP.locations.forEach(loc=>{ const d=S.data[loc]||{};
+    for(const k in d) if(d[k].note) n++; }); return n;
+}
+
+function renderBoot(){
+  const others = otherMonthKeys();
+  let stale = '';
+  if(others.length){
+    stale = `<div class="card" style="border-color:#f0c988;background:var(--recybg)">
+      <h2 style="color:var(--recy)">Old counts found</h2>
+      <p class="sub">Leftover data from a previous month is on this device. Clear it so
+      it can't mix with <b>${APP.month}</b>.</p>
+      <button class="ghost" onclick="clearOthers()">Clear old month data</button></div>`;
+  }
+  el.innerHTML = `
+   <div class="bar safe"><div class="ttl">${escapeHtml(APP.title||'MJH Month-End Inventory')}</div></div>
+   <div class="wrap">
+     <div class="card">
+       <h1>Start a Month-End Inventory</h1>
+       <p class="sub">Counting for <b>${APP.month}</b>. Enter your name to begin.</p>
+       <label>Counter name</label>
+       <input id="cn" type="text" autocomplete="name" placeholder="${escapeAttr(APP.counterHint||'e.g. Jay')}"
+              value="${S.counter?escapeAttr(S.counter):''}">
+       <button class="primary" onclick="startMEI()">Start counting</button>
+     </div>
+     ${stale}
+     <p class="sub" style="text-align:center">${APP.items.length} items · ${APP.locations.length} locations</p>
+   </div>`;
+}
+function clearOthers(){ otherMonthKeys().forEach(k=>localStorage.removeItem(k)); toast('Old data cleared'); render(); }
+function startMEI(){
+  const v=(document.getElementById('cn').value||'').trim();
+  if(!v){ toast('Enter your name'); return; }
+  S.counter=v; save(); view.screen='home'; render();
+}
+
+function renderHome(){
+  let cards='';
+  const grpOf={};                       // optional APP.groups = [{name, locs:[...]}] -> headers on the home list
+  (APP.groups||[]).forEach(g=>{ if(g.locs&&g.locs.length) grpOf[g.locs[0]]=g.name; });
+  APP.locations.forEach(loc=>{
+    if(grpOf[loc]) cards+=`<div class="lochdr">${escapeHtml(grpOf[loc])}</div>`;
+    const c=counts(loc), done=S.complete[loc];
+    let st, cls='';
+    if(done){ st=`✅ Complete`+(c.recy?` · ♺ ${c.recy}`:''); cls='done'; }
+    else if(c.recorded){ st=`${c.recorded}/${c.total} counted`+(c.recy?` · ♺ ${c.recy}`:''); }
+    else { st='Not started'; }
+    if(c.recy && done) cls='recy';
+    cards+=`<div class="loc" onclick="openLoc('${escapeAttr(loc)}')">
+       <div class="nm">${loc}</div><div class="st ${cls}">${st}</div>
+       <div class="chev">›</div></div>`;
+  });
+  el.innerHTML=`
+   <div class="bar safe"><div class="ttl">${escapeHtml(APP.homeTitle||'Month-End Inventory')}
+     <div class="sub">${APP.month} · ${escapeHtml(S.counter||'')}</div></div>
+   </div>
+   <div class="wrap">
+     ${cards}
+     <button class="primary" style="margin-top:6px" onclick="exportSheet()">Export counts to send back</button>
+     <button class="ghost" style="margin-top:10px" onclick="openGuide()">ℹ️ How to count (guide)</button>
+     <button class="ghost" style="margin-top:10px" onclick="openNotes()">📝 Notes (${noteCount()})</button>
+     <button class="ghost" style="margin-top:10px" onclick="if(confirm('Change counter name / restart the front screen? Your counts stay saved.')){view.screen=\'boot\';render();}">Menu</button>
+   </div>`;
+}
+function openNotes(){ view.screen='notes'; render(); window.scrollTo(0,0); }
+function renderNotes(){
+  let n=0, body='';
+  APP.locations.forEach(loc=>{
+    const d=S.data[loc]||{}; let block='';
+    itemsFor(loc).forEach(it=>{ const r=d[it.fsn];
+      if(r&&r.note){ n++;
+        block+=`<div class="noteitem">
+          <div class="nh">Note ${n} — <b>${escapeHtml(it.category||'')}</b> — ${it.fsn} / ${escapeHtml(it.description)}</div>
+          <div class="nb">${escapeHtml(r.note)}</div></div>`; }
+    });
+    if(block) body+=`<div class="lochdr">${escapeHtml(loc)}</div>`+block;
+  });
+  if(!n) body=`<div class="empty">No notes yet. Open any item → <b>📝 Add note</b>.</div>`;
+  el.innerHTML=`
+   <div class="bar safe"><button onclick="goHome()">‹ Home</button>
+     <div class="ttl">Notes<div class="sub">${n} note(s) · ${APP.month}</div></div></div>
+   <div class="wrap">${body}</div>`;
+}
+function openLoc(loc){ view.screen='location'; view.loc=loc; view.mode='count'; view.open=null; render(); window.scrollTo(0,0); }
+
+function renderLocation(){
+  const loc=view.loc, c=counts(loc);
+  const notCountedFilter = it=>{const r=getr(loc,it.fsn); return !(r&&(r.recorded||r.nc||r.nostock||r.recycle));};
+  const scoped = itemsFor(loc);
+  const items = view.mode==='recycle'
+     ? scoped.filter(it=>{const r=getr(loc,it.fsn);return r&&r.recycle;})
+     : view.mode==='notcounted'
+     ? scoped.filter(notCountedFilter)
+     : scoped;
+  const emptyMsg = view.mode==='recycle' ? 'No recycled items for this area. 🎉'
+                 : 'Everything is counted, NC, or not-stocked. 🎉';
+  let body='';
+  if(!items.length){ body=`<div class="empty">${emptyMsg}</div>`; }
+  else { let cat=null;
+    items.forEach(it=>{ if(it.category!==cat){ cat=it.category; body+=`<div class="cathdr">${escapeHtml(cat||'')}</div>`; }
+      body+=renderItem(loc,it); }); }
+  let top;
+  if(view.mode==='notcounted'){
+    top=`<div class="banner"><b>Not-counted items</b> — these export as <b>NC</b> unless you count them.
+         Count anything stocked you missed, or leave as-is.
+         <button class="ghost" style="margin-top:8px" onclick="setMode('count')">‹ Back to full list</button></div>`;
+  } else {
+    top=`<div class="seg">
+       <button class="${view.mode==='count'?'on':''}" onclick="setMode('count')">Count list</button>
+       <button class="${view.mode==='recycle'?'on':''}" onclick="setMode('recycle')">♺ Recycle (${c.recy})</button></div>`;
+  }
+  el.innerHTML=`
+   <div class="bar safe">
+     <button onclick="goHome()">‹ Home</button>
+     <div class="ttl">${loc}<div class="sub">${c.recorded}/${c.total} counted${c.recy?` · ♺ ${c.recy}`:''}</div></div>
+     <button class="cta" onclick="completeLoc()">Complete</button>
+   </div>
+   <div class="wrap">${top}${body}</div>`;
+}
+function setMode(m){ view.mode=m; view.open=null; render(); window.scrollTo(0,0); }
+function goHome(){ view.screen='home'; view.open=null; render(); window.scrollTo(0,0); }
+
+function renderItem(loc,it){
+  const r=getr(loc,it.fsn); const isOpen=view.open===it.fsn;
+  const hasNote=!!(r&&r.note&&String(r.note).trim());
+  const recorded=!!(r&&r.recorded);
+  let cls='item';
+  let badges='';
+  if(recorded){ cls+=' rec'; badges+=`✓ ${escapeHtml(r.count||'')} ${escapeHtml(r.ct_uom||'')} `; }
+  else if(r&&r.nostock){ cls+=' ns'; badges+='⊘ NS '; }
+  else if(r&&r.nc){ cls+=' nc'; badges+='NC '; }
+  if(r&&r.recycle&&!recorded){ cls+=' rcy'; badges+='♺ '; }
+  else if(r&&r.recycle){ badges+='♺ '; }
+  if(hasNote) badges+='📝';
+  const mark = isOpen ? `<div class="closer" aria-label="Close">✕</div>`
+                      : (badges?`<div class="mk">${badges}</div>`:'');
+  if(isOpen) cls+=' open';
+  let row=`<div class="${cls}" onclick="toggle('${escapeAttr(it.fsn)}')">
+     <div class="fsn">${it.fsn.replace('FSN','')}</div>
+     <div class="ds">${escapeHtml(it.description)}</div>${mark}</div>`;
+  if(!isOpen) return row;
+  const opts=(it.ct_uom_options||[]).map(u=>`<option ${r&&r.ct_uom===u?'selected':''}>${u}</option>`).join('');
+  const pack=it.pack_note?`<div class="pack">Pack: ${escapeHtml(it.pack_note)}</div>`:'';
+  const recyOn=r&&r.recycle;
+  const noteShown = hasNote || view.noteOpen===it.fsn;
+  const noteUI = noteShown
+    ? `<label>Note (${escapeHtml(it.category||'')})</label>
+       <textarea id="note" placeholder="Anything worth flagging for this item…"
+                 onchange="saveNote('${escapeAttr(loc)}','${escapeAttr(it.fsn)}',this.value)">${escapeHtml(r&&r.note||'')}</textarea>`
+    : `<button class="b-note" onclick="openNote('${escapeAttr(it.fsn)}')">📝 Add note</button>`;
+  return row+`<div class="panel" onclick="event.stopPropagation()">
+     <div class="prow"><div class="k">INV UOM (fixed)</div><div class="invuom">${escapeHtml(it.inv_uom||'—')}</div></div>
+     <div class="prow"><div class="k">Amount counted</div>
+        <input id="amt" type="number" inputmode="decimal" placeholder="0"
+               value="${r&&r.count!=null?escapeAttr(r.count):''}"></div>
+     <div class="prow"><div class="k">CT-UOM (counted in)</div>
+        <select id="ctu"><option value="">— pick —</option>${opts}</select></div>
+     ${pack}
+     <div class="btns">
+        <button class="b-recy ${recyOn?'on':''}" onclick="toggleRecycle('${escapeAttr(loc)}','${escapeAttr(it.fsn)}')">${recyOn?'♺ On recycle':'♺ Recycle'}</button>
+        <button class="b-rec" onclick="recordItem('${escapeAttr(loc)}','${escapeAttr(it.fsn)}')">Record count</button>
+     </div>
+     <div class="btns">
+        <button class="b-nc ${r&&r.nc?'on':''}" onclick="markNC('${escapeAttr(loc)}','${escapeAttr(it.fsn)}')">${r&&r.nc?'NC ✓':'Mark NC'}</button>
+        <button class="b-ns ${r&&r.nostock?'on':''}" onclick="markNotStocked('${escapeAttr(loc)}','${escapeAttr(it.fsn)}')">${r&&r.nostock?'⊘ Not stocked':'Not stocked here'}</button>
+     </div>
+     ${r&&r.recorded?`<div class="btns"><button class="b-unrec" onclick="unrecord('${escapeAttr(loc)}','${escapeAttr(it.fsn)}')">Un-record</button></div>`:''}
+     <div class="noteSec">${noteUI}</div>
+   </div>`;
+}
+function openNote(fsn){ view.noteOpen=fsn; render(); }
+function saveNote(loc,fsn,val){
+  const r=rec(loc,fsn); r.note=(val||'').trim(); if(!r.note) delete r.note;
+  save(); toast('Note saved');
+}
+function toggle(fsn){ if(view.open===fsn){ view.open=null; view.noteOpen=null; } else { view.open=fsn; view.noteOpen=null; } render(); }
+function grabNote(loc,fsn){ const nt=document.getElementById('note'); if(nt){ const v=nt.value.trim();
+  const r=rec(loc,fsn); if(v) r.note=v; else delete r.note; } }
+
+function recordItem(loc,fsn){
+  const amt=(document.getElementById('amt')||{}).value;
+  const ctu=(document.getElementById('ctu')||{}).value;
+  if(amt===''||amt==null){ toast('Enter an amount'); return; }
+  if(!ctu){ toast('Pick a CT-UOM'); return; }
+  grabNote(loc,fsn);
+  const r=rec(loc,fsn); const wasRecy=!!r.recycle;
+  r.count=amt; r.ct_uom=ctu; r.recorded=true; r.recycle=false; r.nc=false; r.nostock=false; r.ts=Date.now();  // count = resolved
+  save(); view.open=null; view.noteOpen=null; render();
+  toast(wasRecy?'Recorded ✓ — cleared from recycle':'Recorded ✓');
+}
+function unrecord(loc,fsn){ const r=getr(loc,fsn); if(r){ r.recorded=false; } save(); render(); toast('Un-recorded'); }
+function markNC(loc,fsn){
+  const r=rec(loc,fsn); r.nc=!r.nc;
+  if(r.nc){ r.recorded=false; r.recycle=false; r.nostock=false; delete r.count; delete r.ct_uom; }
+  save(); view.open=null; view.noteOpen=null; render(); toast(r.nc?'Marked Not Counted (NC)':'NC cleared');
+}
+function markNotStocked(loc,fsn){
+  const r=rec(loc,fsn); r.nostock=!r.nostock;
+  if(r.nostock){ r.recorded=false; r.recycle=false; r.nc=false; delete r.count; delete r.ct_uom; }
+  save(); view.open=null; view.noteOpen=null; render(); toast(r.nostock?'Marked Not stocked here':'Removed');
+}
+function toggleRecycle(loc,fsn){
+  grabNote(loc,fsn);
+  const r=rec(loc,fsn); r.recycle=!r.recycle; save();
+  const on=r.recycle; view.open=null; view.noteOpen=null;   // collapse like Record
+  render(); toast(on?'Added to recycle ♺':'Removed from recycle');
+}
+
+function completeLoc(){
+  const loc=view.loc, c=counts(loc);
+  S.complete[loc]=true; save();
+  const recyBtn = c.recy
+    ? `<button class="ghost" style="margin-bottom:10px" onclick="reviewRecycle('${escapeAttr(loc)}')">Review ♺ ${c.recy} now</button>` : '';
+  const ncBtn = c.notcounted
+    ? `<button class="ghost" style="margin-bottom:10px" onclick="reviewNotCounted('${escapeAttr(loc)}')">Review not-counted (${c.notcounted})</button>` : '';
+  modal(`<h2>Saved ✓</h2>
+     <p class="sub"><b>${loc}</b> marked complete.</p>
+     <p class="sub">Counted <b>${c.recorded}</b> · ♺ <b>${c.recy}</b> · NC <b>${c.nc}</b> · Not stocked <b>${c.nostock}</b></p>
+     ${c.notcounted?`<p class="sub"><b>${c.notcounted}</b> item(s) not counted — these export as <b>NC</b> unless you count them.</p>`:'<p class="sub">Every item is accounted for. 🎉</p>'}
+     ${recyBtn}${ncBtn}
+     <button class="primary" onclick="closeModal();goHome()">Back to locations</button>`);
+}
+function reviewRecycle(loc){ closeModal(); view.screen='location'; view.loc=loc;
+  view.mode='recycle'; view.open=null; render(); window.scrollTo(0,0); }
+function reviewNotCounted(loc){ closeModal(); view.screen='location'; view.loc=loc;
+  view.mode='notcounted'; view.open=null; render(); window.scrollTo(0,0); }
+
+/* ---------------- export ---------------- */
+function buildPayload(){
+  // Compact format (merge script maps fsn -> category/description/inv_uom;
+  //   any location item NOT present here = NC by default):
+  //   {m,k,c,e,v:1, L:{ loc:[ {f, q?, u?, r?, x?, s?, n?} ] }}
+  //   q/u=count & ct_uom (recorded) · r=1 recycle · x=1 NC · s=1 not-stocked-here · n=note
+  const out={ m:APP.month, k:APP.monthKey, c:S.counter, e:new Date().toISOString(), v:1, L:{} };
+  APP.locations.forEach(loc=>{
+    const d=S.data[loc]||{}; const rows=[];
+    for(const fsn in d){ const r=d[fsn];
+      const note=(r.note&&String(r.note).trim())||null;
+      if(!(r.recorded||r.recycle||r.nc||r.nostock||note)) continue;
+      const o={f:fsn};
+      if(r.recorded){ o.q=r.count; o.u=r.ct_uom; }
+      if(r.recycle) o.r=1;
+      if(r.nc) o.x=1;
+      if(r.nostock) o.s=1;
+      if(note) o.n=note;
+      rows.push(o);
+    }
+    if(rows.length) out.L[loc]=rows;
+  });
+  return out;
+}
+function exportSheet(){
+  const p=buildPayload(); const txt=JSON.stringify(p);
+  modal(`<h2>Send counts back</h2>
+    <p class="sub">Two ways — use whichever your phone allows.</p>
+    <button class="primary" onclick="copyCode('${b64(txt)}')">Copy count code (for text)</button>
+    <button class="ghost" style="margin-top:10px" onclick="downloadJSON()">Download file (for email)</button>
+    <button class="ghost" style="margin-top:10px;background:#fff;border:1px solid var(--line)" onclick="closeModal()">Close</button>`);
+}
+function copyCode(b){
+  const s='MJHCOUNT1:'+b;
+  const done=ok=>toast(ok?'Copied ✓ — paste into a text to Mike':'Copy failed — use Download');
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(s).then(()=>done(1),()=>done(0)); }
+  else { const t=document.createElement('textarea'); t.value=s; document.body.appendChild(t); t.select();
+         try{document.execCommand('copy');done(1);}catch(e){done(0);} t.remove(); }
+}
+function downloadJSON(){
+  const p=buildPayload(); const blob=new Blob([JSON.stringify(p,null,1)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=(APP.appKey||'counts')+'_'+APP.monthKey+'_'+(S.counter||'counter').replace(/\W+/g,'')+'.json';
+  document.body.appendChild(a); a.click(); a.remove(); toast('File downloaded');
+}
+
+/* ---------------- helpers ---------------- */
+function b64(s){ return btoa(unescape(encodeURIComponent(s))); }
+function escapeHtml(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function escapeAttr(s){ return (s==null?'':String(s)).replace(/["'&<>]/g,c=>({'"':'&quot;',"'":'&#39;','&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+let tT; function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show');
+  clearTimeout(tT); tT=setTimeout(()=>t.classList.remove('show'),1900); }
+function modal(html){ document.getElementById('modalHost').innerHTML=`<div class="modal"><div class="box">${html}</div></div>`; }
+function closeModal(){ document.getElementById('modalHost').innerHTML=''; }
+
+/* ---------------- boot ---------------- */
+view.screen = S.counter ? 'home' : 'boot';
+render();
+</script>
+</body>
+</html>
